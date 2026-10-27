@@ -114,18 +114,29 @@
   async function exportGif(action) {
     busy = true; message = '';
     try {
-      const blob = await makeGif();
       if (action === 'copy') {
-        if (!navigator.clipboard?.write || !window.ClipboardItem || (ClipboardItem.supports && !ClipboardItem.supports('image/gif'))) throw new Error('This browser can’t copy GIFs directly. Download the GIF instead.');
-        await navigator.clipboard.write([new ClipboardItem({ 'image/gif': blob })]);
-        message = 'Copied GIF to clipboard!';
+        if (!navigator.clipboard?.write || !window.ClipboardItem) throw new Error('Clipboard access is unavailable. Download the GIF instead.');
+        const canCopyGif = ClipboardItem.supports?.('image/gif') === true;
+        if (canCopyGif) {
+          // Start clipboard access within the click gesture, while the GIF is encoded.
+          await navigator.clipboard.write([new ClipboardItem({ 'image/gif': makeGif() })]);
+          message = 'Copied animated GIF to clipboard!';
+        } else {
+          const snapshot = document.createElement('canvas'); snapshot.width = snapshot.height = size;
+          draw(snapshot.getContext('2d'), 0);
+          const png = new Promise((resolve, reject) => snapshot.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not create image.')), 'image/png'));
+          await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+          message = 'Copied a still PNG. Download GIF for animation.';
+        }
       } else {
+        const blob = await makeGif();
         const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'emoji-intensified.gif'; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
         message = 'Your GIF is ready!';
       }
-    } catch (error) { message = error.message || 'Something went wrong while creating the GIF.'; }
+    } catch (error) { message = error.message || 'Something went wrong. Try downloading the GIF.'; }
     finally { busy = false; }
   }
+
 </script>
 
 <svelte:head><meta name="description" content="Turn any emoji into a wonderfully wobbly GIF." /></svelte:head>
@@ -162,7 +173,7 @@
         <div class="slider-row"><div class="slider-title"><label for="speed">Speed</label><span>{speed <= 50 ? 'Fast' : speed <= 90 ? 'Medium' : 'Chill'}</span></div><input id="speed" type="range" min="30" max="150" step="10" value={180-speed} oninput={(e) => speed = 180 - Number(e.currentTarget.value)}/><div class="slider-ends"><span>CHILL</span><span>ZOOMIES</span></div></div>
         <div class="slider-row"><div class="slider-title"><label for="blur">Motion blur</label><span>{blur} / 5</span></div><input id="blur" type="range" min="0" max="5" step="0.5" bind:value={blur}/><div class="slider-ends"><span>OFF</span><span>TRAILS</span></div></div>
       </div>
-      <div class="preview-panel"><div class="preview-top"><span><span class="live-dot"></span> LIVE PREVIEW</span><span>128 × 128 PX</span></div><div class="preview-stage"><span class="deco deco-a">✳</span><span class="deco deco-b">✦</span><div class="preview-box"><canvas bind:this={canvas} width={size} height={size} aria-label="Animated emoji preview"></canvas></div><span class="deco deco-c">✳</span><span class="deco deco-d">✦</span></div><div class="preview-caption"><strong>Looking good!</strong><span>{background === 'white' ? 'Smooth trails on white.' : 'Transparent background, infinite energy.'}</span></div><div class="actions"><button class="download" disabled={busy} onclick={() => exportGif('download')}><span>↓</span> {busy ? 'Making magic…' : 'Download GIF'}</button><button class="copy" disabled={busy} onclick={() => exportGif('copy')}><span>▢</span> Copy GIF</button></div><p class="export-note" aria-live="polite">{message || 'MADE TO LOOP FOREVER  ·  GIF FORMAT'}</p></div>
+      <div class="preview-panel"><div class="preview-top"><span><span class="live-dot"></span> LIVE PREVIEW</span><span>128 × 128 PX</span></div><div class="preview-stage"><span class="deco deco-a">✳</span><span class="deco deco-b">✦</span><div class="preview-box"><canvas bind:this={canvas} width={size} height={size} aria-label="Animated emoji preview"></canvas></div><span class="deco deco-c">✳</span><span class="deco deco-d">✦</span></div><div class="preview-caption"><strong>Looking good!</strong><span>{background === 'white' ? 'Smooth trails on white.' : 'Transparent background, infinite energy.'}</span></div><div class="actions"><button class="download" disabled={busy} onclick={() => exportGif('download')}><span>↓</span> {busy ? 'Making magic…' : 'Download GIF'}</button><button class="copy" disabled={busy} onclick={() => exportGif('copy')}><span>▢</span> Copy image</button></div><p class="export-note" aria-live="polite">{message || 'MADE TO LOOP FOREVER  ·  GIF FORMAT'}</p></div>
     </section>
     <div class="bottom-note"><span>✦</span> A little shake goes a long way. <span>✦</span></div>
   </main><footer><span>EMOJI INTENSIFIER <span class="footer-star">✳</span></span><span>MADE FOR THE DRAMATIC</span></footer>
