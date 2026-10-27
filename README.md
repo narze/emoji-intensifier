@@ -9,4 +9,4 @@ npm install
 npm run dev
 ```
 
-Type an emoji or upload an image, crop uploaded images, frame the output, and adjust intensity, speed, and motion blur, then download the 128 × 128 GIF. White backgrounds preserve smooth motion trails; transparent GIFs are limited to one-bit alpha; animated uploads use their first frame. Copy uses an animated GIF when supported by the browser, and otherwise copies a still PNG. Download preserves the animation.
+Type an emoji or upload an image, crop uploaded images, frame the output, and adjust intensity, speed, and motion blur, then download the 128 × 128 GIF. White backgrounds preserve smooth motion trails; transparent GIFs are limited to one-bit alpha; animated uploads use their first frame.
