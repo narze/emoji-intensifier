@@ -83,7 +83,25 @@
   onMount(() => {
     let id, start = performance.now();
     function tick(now) { if (canvas) draw(canvas.getContext('2d'), Math.floor((now-start)/Number(speed)) % frames); id = requestAnimationFrame(tick); }
-    id = requestAnimationFrame(tick); return () => cancelAnimationFrame(id);
+    id = requestAnimationFrame(tick);
+    const favicon = document.querySelector('link[rel="icon"]');
+    const originalIcon = favicon.href;
+    const iconCanvas = document.createElement('canvas'); iconCanvas.width = iconCanvas.height = 64;
+    const iconContext = iconCanvas.getContext('2d');
+    let iconFrame = 0;
+    function animateIcon() {
+      const [x, y, angle] = motion[iconFrame++ % frames];
+      iconContext.clearRect(0, 0, 64, 64);
+      iconContext.fillStyle = '#badb5c'; iconContext.beginPath(); iconContext.roundRect(0, 0, 64, 64, 15); iconContext.fill();
+      iconContext.save(); iconContext.translate(32 + x * 3, 32 + y * 3); iconContext.rotate(angle * Math.PI / 90);
+      iconContext.fillStyle = '#263e35'; iconContext.font = 'bold 47px sans-serif'; iconContext.textAlign = 'center'; iconContext.textBaseline = 'middle'; iconContext.fillText('✳', 0, 1);
+      iconContext.restore();
+      favicon.type = 'image/png'; favicon.href = iconCanvas.toDataURL('image/png');
+    }
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+    animateIcon();
+    const iconTimer = setInterval(() => { if (!reducedMotion.matches) animateIcon(); }, 100);
+    return () => { cancelAnimationFrame(id); clearInterval(iconTimer); favicon.type = 'image/svg+xml'; favicon.href = originalIcon; };
   });
   function loadFile(file) {
     if (!file) return;
