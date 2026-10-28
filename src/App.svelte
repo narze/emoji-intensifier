@@ -12,26 +12,30 @@
   // A deterministic loop keeps the live preview and exported GIF in sync.
   const motion = [[-1,-.3, -3],[.8,.8, 3],[-.6,1,-2],[1,-.8,3],[-1,.4,-3],[.7,-1,2],[-.8,-.7,-2],[1,.4,3],[-.5,1,-3],[.8,-.5,2],[-1,.2,-2],[.5,-1,3]];
   let emojiLayoutKey = '', emojiLayout = { x: 0, y: 0, scale: 1 };
+  function emojiText() { return emoji.trim() || '😂'; }
   function getEmojiLayout() {
-    const key = `${emoji}|${intensity}`;
+    const text = emojiText();
+    const key = `${text}|${intensity}`;
     if (key === emojiLayoutKey) return emojiLayout;
     emojiLayoutKey = key;
     const measure = document.createElement('canvas');
-    measure.width = measure.height = 256;
     const context = measure.getContext('2d', { willReadFrequently: true });
-    context.textAlign = 'center'; context.textBaseline = 'middle';
-    context.font = '90px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
-    context.fillText(emoji || '😂', 128, 133, 108);
-    const pixels = context.getImageData(0, 0, 256, 256).data;
-    let left = 256, right = -1, top = 256, bottom = -1;
-    for (let y = 0; y < 256; y++) for (let x = 0; x < 256; x++) {
-      if (pixels[(y * 256 + x) * 4 + 3] > 0) {
+    const font = '90px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
+    context.font = font;
+    measure.width = Math.max(256, Math.ceil(context.measureText(text).width + 128));
+    measure.height = 256;
+    context.textAlign = 'center'; context.textBaseline = 'middle'; context.font = font;
+    context.fillText(text, measure.width / 2, 133);
+    const pixels = context.getImageData(0, 0, measure.width, measure.height).data;
+    let left = measure.width, right = -1, top = measure.height, bottom = -1;
+    for (let y = 0; y < measure.height; y++) for (let x = 0; x < measure.width; x++) {
+      if (pixels[(y * measure.width + x) * 4 + 3] > 0) {
         left = Math.min(left, x); right = Math.max(right, x);
         top = Math.min(top, y); bottom = Math.max(bottom, y);
       }
     }
     if (right < left) return emojiLayout = { x: 0, y: 0, scale: 1 };
-    const centerX = (left + right + 1) / 2 - 128;
+    const centerX = (left + right + 1) / 2 - measure.width / 2;
     const centerY = (top + bottom + 1) / 2 - 128;
     const halfWidth = (right - left + 1) / 2, halfHeight = (bottom - top + 1) / 2;
     let scale = Infinity;
@@ -42,7 +46,7 @@
       const extentY = halfWidth * sin + halfHeight * c;
       scale = Math.min(scale, (63 - Math.abs(x * intensity)) / extentX, (63 - Math.abs(y * intensity)) / extentY);
     }
-    return emojiLayout = { x: centerX, y: centerY, scale: Math.max(0.1, scale) };
+    return emojiLayout = { x: centerX, y: centerY, scale };
   }
   function draw(ctx, frame) {
     ctx.clearRect(0, 0, size, size);
@@ -66,7 +70,7 @@
         const layout = getEmojiLayout();
         ctx.scale(layout.scale, layout.scale); ctx.translate(-layout.x, -layout.y);
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '90px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif';
-        ctx.fillText(emoji || '😂', 0, 5, 108);
+        ctx.fillText(emojiText(), 0, 5);
       }
       ctx.restore();
     }
@@ -149,7 +153,7 @@
     <section class="workspace" aria-label="Emoji editor">
       <div class="controls">
         <div class="section-heading"><span class="step">01</span><div><h2>Pick your emoji</h2><p>Start with a face or bring your own.</p></div></div>
-        <div class="emoji-entry"><span class="input-label">TYPE AN EMOJI</span><div class="emoji-field"><input aria-label="Type an emoji" bind:value={emoji} oninput={useEmoji} maxlength="16"/><button class="use-btn" onclick={useEmoji}>Use emoji <span>↗</span></button></div></div>
+        <div class="emoji-entry"><span class="input-label">TYPE AN EMOJI</span><div class="emoji-field"><input aria-label="Type an emoji" bind:value={emoji} oninput={useEmoji} onblur={() => emoji = emoji.trim()} maxlength="16"/><button class="use-btn" onclick={() => { emoji = emoji.trim(); useEmoji(); }}>Use emoji <span>↗</span></button></div></div>
         <div class="or"><span></span> OR <span></span></div>
         <button class:dragging class="dropzone" onclick={() => fileInput.click()} ondragover={(e) => {e.preventDefault(); dragging = true;}} ondragleave={() => dragging = false} ondrop={(e) => {e.preventDefault(); dragging = false; loadFile(e.dataTransfer.files[0]);}}>
           <span class="upload-icon">↑</span><span><strong>{fileName || 'Drop an image here'}</strong><small>or click to upload · PNG, JPG, GIF, WebP</small></span><span class="upload-arrow">↗</span>
